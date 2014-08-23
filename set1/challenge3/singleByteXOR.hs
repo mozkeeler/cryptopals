@@ -16,21 +16,32 @@ hex2intList h = result
 nibble2Hex n = (concat [['0'..'9'],['a'..'f']]) !! n
 byte2hex b = [nibble2Hex (shiftR b 4)] ++ [nibble2Hex (b .&. 15)]
 
-count (l:ls) e = (+) (if (==) l e then 1 else 0) (count ls e)
-count _ e = 0
+count :: Eq a => a -> [a] -> Int
+count e (l:ls) = (+) (if (==) e l then 1 else 0) (count e ls)
+count e _ = 0
 
-contains (l:ls) e = if (==) l e then True else False
-contains _ e = False
+contains e (l:ls) = if (==) e l then True else contains e ls
+contains e _ = False
 
-uniq l = foldr (\ e l -> if (contains l e) then l else (e:l)) [] l
+uniq l = foldr (\ e l -> if (contains e l) then l else (e:l)) [] l
 
-occurrences l = result
+mostFrequentBytes l = result
   where
-    sorted = sort l
-    counts = map (\ e -> count l e) sorted
-    unique = uniq (zip sorted counts)
-    max = last (sortBy (\ (a,b) (c,d) -> compare b d) unique)
-    result = max
+    counts = map (\ e -> count e l) l
+    pairs = zip l counts
+    result = uniq (sortBy (\ (a,b) (c,d) -> compare d b) pairs)
+
+decrypt l k = result
+  where
+    decrypted = map (\ e -> xor e k) l
+    result = map chr decrypted
+
+tryAllDecryptions l = result
+  where
+    frequentBytes = fst (unzip (mostFrequentBytes l))
+    keys = map (\ e -> xor e (ord ' ')) frequentBytes
+    decryptions = map (\ k -> decrypt l k) keys
+    result = zip decryptions keys
 
 main :: IO()
-main = putStr ((show (occurrences (hex2intList ciphertext))) ++ "\n")
+main = putStr ((show (tryAllDecryptions (hex2intList ciphertext))) ++ "\n")
